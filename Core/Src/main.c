@@ -33,6 +33,8 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define CONCAT_8BIT_INTO_16BIT(high_byte, low_byte)  (((high_byte) << 8U) | low_byte)
+#define MAX(a, b)                                   ((a) = (b) > (a) ? (a):(a))
+#define MIN(a, b)                                   ((a) = (b) < (a) ? (b):(a))
 
 #define MAGN_VALUE_TO_PERSENT(val) ((0xffff - (val)) / 10)
 /* USER CODE END PD */
@@ -205,7 +207,7 @@ void mb_init(void)
 
   HAL_Delay(100);
 
-  value = 0x01;
+  value = 0b01000001;
   status = HAL_I2C_Mem_Write(&hi2c1, I2C_ADDR_READ_MAGNETOMETER, I2C_ADDR_CFG_REG_C_M, I2C_MEMADD_SIZE_8BIT, &value, 1, HAL_MAX_DELAY);
 
   if (status != HAL_OK)
@@ -215,7 +217,7 @@ void mb_init(void)
 
   HAL_Delay(100);
 
-  value = 0b11100001;
+  value = 0b11100111;
   status = HAL_I2C_Mem_Write(&hi2c1, I2C_ADDR_READ_MAGNETOMETER, I2C_ADDR_INT_CTRL_REG_M, I2C_MEMADD_SIZE_8BIT, &value, 1, HAL_MAX_DELAY);
 
   if (status != HAL_OK)
@@ -224,14 +226,6 @@ void mb_init(void)
   }
 
   HAL_Delay(100);
-
-  value = 0x57;
-  status = HAL_I2C_Mem_Write(&hi2c1, I2C_ADDR_READ_MAGNETOMETER, I2C_ADDR_CTRL_REG1_A, I2C_MEMADD_SIZE_8BIT, &value, 1, HAL_MAX_DELAY);
-
-  if (status != HAL_OK)
-  {
-    Error_Handler();
-  }
 
 
   HAL_GPIO_WritePin(g_led_states[7].GPIOx, g_led_states[7].GPIO_Pin, GPIO_PIN_SET);
@@ -265,6 +259,194 @@ void mb_init(void)
   // mb_toggle_pin(LD8_GPIO_Port, LD8_Pin, value);
 }
 
+static uint8_t axis_values[6];
+
+void read_all_regs(void)
+{
+  uint8_t axis_idx;
+  HAL_StatusTypeDef status;
+  uint8_t value;
+
+  for (axis_idx = 0; axis_idx < sizeof(g_reading_steps)/sizeof(*g_reading_steps); axis_idx++)
+  {
+    status = HAL_I2C_Mem_Read(&hi2c1, 0x3C,
+                              g_reading_steps[axis_idx], I2C_MEMADD_SIZE_8BIT,
+                              &axis_values[axis_idx], 1, HAL_MAX_DELAY);
+  }
+}
+
+
+void self_test(void)
+{
+  uint8_t value;
+  HAL_StatusTypeDef status;
+  uint8_t idx;
+  uint8_t axis_idx;
+  uint16_t x_axis[50], y_axis[50], z_axis[50];
+  uint16_t st_x_axis[50], st_y_axis[50], st_z_axis[50];
+  uint32_t no_st[3] = {0, 0, 0}, st[3] = {0, 0, 0};
+  uint16_t st_min[3] = {0xFFFF, 0xFFFF, 0xFFFF}, st_max[3] = {0, 0, 0};
+
+  value = 0x8CU;
+  status = HAL_I2C_Mem_Write(&hi2c1, I2C_ADDR_READ_MAGNETOMETER,
+                              0x60U, I2C_MEMADD_SIZE_8BIT,
+                              &value, 1, HAL_MAX_DELAY);
+
+  if (status != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  value = 0x02;
+  status = HAL_I2C_Mem_Write(&hi2c1, I2C_ADDR_READ_MAGNETOMETER,
+                              0x61U, I2C_MEMADD_SIZE_8BIT,
+                              &value, 1, HAL_MAX_DELAY);
+
+  if (status != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  value = 0x10;
+  status = HAL_I2C_Mem_Write(&hi2c1, I2C_ADDR_READ_MAGNETOMETER,
+                              0x62U, I2C_MEMADD_SIZE_8BIT,
+                              &value, 1, HAL_MAX_DELAY);
+
+  if (status != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  HAL_Delay(20);
+
+  // Second block
+
+  while(1)
+  {
+    status = HAL_I2C_Mem_Read(&hi2c1, I2C_ADDR_READ_MAGNETOMETER,
+                              0x67U, I2C_MEMADD_SIZE_8BIT,
+                              &value, 1, HAL_MAX_DELAY);
+    if (value & 0b1000)
+    {
+      read_all_regs();
+      break;
+    }
+  }
+
+  for (idx = 0; idx < 50; idx++)
+  {
+    status = HAL_I2C_Mem_Read(&hi2c1, I2C_ADDR_READ_MAGNETOMETER,
+                            0x67U, I2C_MEMADD_SIZE_8BIT,
+                            &value, 1, HAL_MAX_DELAY);
+
+    if (value & 0b1000)
+    {
+      read_all_regs();
+
+      x_axis[axis_idx] = CONCAT_8BIT_INTO_16BIT(axis_values[1], axis_values[0]);
+      y_axis[axis_idx] = CONCAT_8BIT_INTO_16BIT(axis_values[3], axis_values[2]);
+      z_axis[axis_idx] = CONCAT_8BIT_INTO_16BIT(axis_values[5], axis_values[4]);
+
+      axis_idx++;
+    }
+
+    // HAL_Delay(5);
+  }
+
+  value = 0x12;
+  status = HAL_I2C_Mem_Write(&hi2c1, I2C_ADDR_READ_MAGNETOMETER,
+                              0x62U, I2C_MEMADD_SIZE_8BIT,
+                              &value, 1, HAL_MAX_DELAY);
+
+  HAL_Delay(60);
+
+  while(1)
+  {
+    status = HAL_I2C_Mem_Read(&hi2c1, I2C_ADDR_READ_MAGNETOMETER,
+                              0x67U, I2C_MEMADD_SIZE_8BIT,
+                              &value, 1, HAL_MAX_DELAY);
+    if (value & 0b1000)
+    {
+      read_all_regs();
+      break;
+    }
+  }
+
+  for (idx = 0; idx < 50; idx++)
+  {
+    status = HAL_I2C_Mem_Read(&hi2c1, I2C_ADDR_READ_MAGNETOMETER,
+                            0x67U, I2C_MEMADD_SIZE_8BIT,
+                            &value, 1, HAL_MAX_DELAY);
+
+    if (value & 0b1000)
+    {
+      read_all_regs();
+
+      st_x_axis[axis_idx] = CONCAT_8BIT_INTO_16BIT(axis_values[1], axis_values[0]);
+      st_y_axis[axis_idx] = CONCAT_8BIT_INTO_16BIT(axis_values[3], axis_values[2]);
+      st_z_axis[axis_idx] = CONCAT_8BIT_INTO_16BIT(axis_values[5], axis_values[4]);
+
+      axis_idx++;
+    }
+
+    // HAL_Delay(5);
+  }
+
+  for (idx = 0; idx < 50; idx++)
+  {
+    st_max[0] = fmaxf(st_max[0], st_x_axis[idx]);
+    st_min[0] = fminf(st_min[0], st_x_axis[idx]);
+
+    st_max[1] = fmaxf(st_max[1], st_y_axis[idx]);
+    st_min[1] = fminf(st_min[1], st_y_axis[idx]);
+
+    st_max[2] = fmaxf(st_max[2], st_z_axis[idx]);
+    st_min[2] = fminf(st_min[2], st_z_axis[idx]);
+
+    st[0] += st_x_axis[idx];
+    st[1] += st_y_axis[idx];
+    st[2] += st_z_axis[idx];
+
+    no_st[0] += x_axis[idx];
+    no_st[1] += y_axis[idx];
+    no_st[2] += z_axis[idx];
+  }
+
+
+
+  status = HAL_OK;
+  for (axis_idx = 0; axis_idx < 3; axis_idx++)
+  {
+    st[axis_idx] /= 50;
+    no_st[axis_idx] /= 50;
+
+    if (st_min[axis_idx] <= abs(st[axis_idx] - no_st[axis_idx])
+        && abs(st[axis_idx] - no_st[axis_idx]) <= st_max[axis_idx])
+    {
+      HAL_GPIO_WritePin(g_led_states[2].GPIOx, g_led_states[2].GPIO_Pin, GPIO_PIN_SET);
+      HAL_GPIO_WritePin(g_led_states[3].GPIOx, g_led_states[3].GPIO_Pin, GPIO_PIN_SET);
+      HAL_GPIO_WritePin(g_led_states[4].GPIOx, g_led_states[4].GPIO_Pin, GPIO_PIN_SET);
+    }
+    else
+    {
+      HAL_GPIO_WritePin(g_led_states[5].GPIOx, g_led_states[5].GPIO_Pin, GPIO_PIN_SET);
+      HAL_GPIO_WritePin(g_led_states[6].GPIOx, g_led_states[6].GPIO_Pin, GPIO_PIN_SET);
+    }
+  }
+
+  value = 0x10;
+  status = HAL_I2C_Mem_Write(&hi2c1, I2C_ADDR_READ_MAGNETOMETER,
+                              0x62U, I2C_MEMADD_SIZE_8BIT,
+                              &value, 1, HAL_MAX_DELAY);
+
+  value = 0x83;
+  status = HAL_I2C_Mem_Write(&hi2c1, I2C_ADDR_READ_MAGNETOMETER,
+                              0x62U, I2C_MEMADD_SIZE_8BIT,
+                              &value, 1, HAL_MAX_DELAY);
+
+
+}
+
 void data_ready_interrupt(void)
 {
   HAL_StatusTypeDef status;
@@ -284,7 +466,6 @@ void data_ready_interrupt(void)
                               g_reading_steps[curr_poll], I2C_MEMADD_SIZE_8BIT,
                               result + axis_idx, 1, HAL_MAX_DELAY);
 
-    HAL_Delay(10);
     curr_poll++;
   }
 
@@ -358,29 +539,34 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
   uint8_t led_idx = 0;
   bool reset_state = true;
+  uint8_t ret;
 
   if (GPIO_Pin == DRDY_Pin)
   {
-    data_ready_interrupt();
+    // data_ready_interrupt();
 
-    for (led_idx = 0; reset_state && led_idx < LED_CNT; led_idx++)
-    {
-      if (g_led_states[led_idx].duty_cycle_percent != 0U)
-      {
-        HAL_GPIO_WritePin(g_led_states[led_idx].GPIOx, g_led_states[led_idx].GPIO_Pin, GPIO_PIN_SET);
-      }
-    }
+    // for (led_idx = 0; reset_state && led_idx < LED_CNT; led_idx++)
+    // {
+    //   if (g_led_states[led_idx].duty_cycle_percent != 0U)
+    //   {
+    //     HAL_GPIO_WritePin(g_led_states[led_idx].GPIOx, g_led_states[led_idx].GPIO_Pin, GPIO_PIN_SET);
+    //   }
+    // }
 
-    for (led_idx = 0; led_idx < LED_CNT; led_idx++)
-    {
-      if (g_led_states[led_idx].duty_cycle_percent == 0)
-      {
-        HAL_GPIO_WritePin(g_led_states[led_idx].GPIOx, g_led_states[led_idx].GPIO_Pin, GPIO_PIN_RESET);
-      }
-    }
+    // for (led_idx = 0; led_idx < LED_CNT; led_idx++)
+    // {
+    //   if (g_led_states[led_idx].duty_cycle_percent == 0)
+    //   {
+    //     HAL_GPIO_WritePin(g_led_states[led_idx].GPIOx, g_led_states[led_idx].GPIO_Pin, GPIO_PIN_RESET);
+    //   }
+    // }
 
+    // HAL_I2C_Mem_Read(&hi2c1, 0x3C,
+    //                 0x64, I2C_MEMADD_SIZE_8BIT,
+    //                 ret, 1, HAL_MAX_DELAY);
   }
-  HAL_NVIC_ClearPendingIRQ(EXTI2_TSC_IRQn);
+
+  // HAL_NVIC_ClearPendingIRQ(EXTI2_TSC_IRQn);
 }
 
 /* USER CODE END 0 */
@@ -417,15 +603,17 @@ int main(void)
   MX_SPI1_Init();
   MX_USB_PCD_Init();
   MX_TIM16_Init();
+
+  self_test();
   /* USER CODE BEGIN 2 */
 
-  mb_init();
+  // mb_init();
 
   /* Enable interrupt for DRDY */
-  HAL_NVIC_SetPriority(EXTI2_TSC_IRQn, 0x00, 0x00);
-  HAL_NVIC_EnableIRQ(EXTI2_TSC_IRQn);
+  // HAL_NVIC_SetPriority(EXTI2_TSC_IRQn, 0x00, 0x00);
+  // HAL_NVIC_EnableIRQ(EXTI2_TSC_IRQn);
 
-  HAL_TIM_Base_Start_IT(&htim16);
+  // HAL_TIM_Base_Start_IT(&htim16);
 
 
   /* USER CODE END 2 */
