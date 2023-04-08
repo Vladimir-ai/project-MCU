@@ -11,7 +11,7 @@
     "SYSCLKSOURCE",
     "USBCLKSOURCE"
   ],
-  "cortex-debug.variableUseNaturalFormat": false,
+  "cortex-debug.variableUseNaturalFormat": true,
   "files.associations": {
     "compare": "c"
   }

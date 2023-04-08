@@ -118,6 +118,16 @@ static uint8_t g_reading_steps[] =
   I2C_ADDR_OUTZ_H_REG_M
 };
 
+static uint8_t g_offsets[] =
+{
+  I2C_ADDR_OFFSET_X_REG_L_M,
+  I2C_ADDR_OFFSET_X_REG_H_M,
+  I2C_ADDR_OFFSET_Y_REG_L_M,
+  I2C_ADDR_OFFSET_Y_REG_H_M,
+  I2C_ADDR_OFFSET_Z_REG_L_M,
+  I2C_ADDR_OFFSET_Z_REG_H_M
+};
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -153,30 +163,25 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
   if (htim == &htim16)
   {
-    current_ctr++;
+    reset_state = true;
+    current_ctr = 0;
 
-    if (current_ctr == PWM_PERIODS)
+    data_ready_interrupt();
+
+    for (led_idx = 0; reset_state && led_idx < LED_CNT; led_idx++)
     {
-      reset_state = true;
-      current_ctr = 0;
+      if (g_led_states[led_idx].duty_cycle_percent != 0U)
+      {
+        HAL_GPIO_WritePin(g_led_states[led_idx].GPIOx, g_led_states[led_idx].GPIO_Pin, GPIO_PIN_SET);
+      }
+    }
 
-      // data_ready_interrupt();
-
-      // for (led_idx = 0; reset_state && led_idx < LED_CNT; led_idx++)
-      // {
-      //   if (g_led_states[led_idx].duty_cycle_percent != 0U)
-      //   {
-      //     HAL_GPIO_WritePin(g_led_states[led_idx].GPIOx, g_led_states[led_idx].GPIO_Pin, GPIO_PIN_SET);
-      //   }
-      // }
-
-      // for (led_idx = 0; led_idx < LED_CNT; led_idx++)
-      // {
-      //   if (g_led_states[led_idx].duty_cycle_percent == 0)
-      //   {
-      //     HAL_GPIO_WritePin(g_led_states[led_idx].GPIOx, g_led_states[led_idx].GPIO_Pin, GPIO_PIN_RESET);
-      //   }
-      // }
+    for (led_idx = 0; led_idx < LED_CNT; led_idx++)
+    {
+      if (g_led_states[led_idx].duty_cycle_percent == 0)
+      {
+        HAL_GPIO_WritePin(g_led_states[led_idx].GPIOx, g_led_states[led_idx].GPIO_Pin, GPIO_PIN_RESET);
+      }
     }
   }
 }
@@ -195,37 +200,37 @@ void mb_init(void)
 
   HAL_Delay(100);
 
-//             |
-  value = 0b01001100;
-  // value = 0;
-  status = HAL_I2C_Mem_Write(&hi2c1, I2C_ADDR_READ_MAGNETOMETER, I2C_ADDR_CFG_REG_A_M, I2C_MEMADD_SIZE_8BIT, &value, 1, HAL_MAX_DELAY);
+  value = 0x8CU;
+  status = HAL_I2C_Mem_Write(&hi2c1, I2C_ADDR_READ_MAGNETOMETER,
+                              0x60U, I2C_MEMADD_SIZE_8BIT,
+                              &value, 1, HAL_MAX_DELAY);
 
   if (status != HAL_OK)
   {
     Error_Handler();
   }
 
-  HAL_Delay(100);
-
-  value = 0b01000001;
-  status = HAL_I2C_Mem_Write(&hi2c1, I2C_ADDR_READ_MAGNETOMETER, I2C_ADDR_CFG_REG_C_M, I2C_MEMADD_SIZE_8BIT, &value, 1, HAL_MAX_DELAY);
-
-  if (status != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  HAL_Delay(100);
-
-  value = 0b11100111;
-  status = HAL_I2C_Mem_Write(&hi2c1, I2C_ADDR_READ_MAGNETOMETER, I2C_ADDR_INT_CTRL_REG_M, I2C_MEMADD_SIZE_8BIT, &value, 1, HAL_MAX_DELAY);
+  value = 0x02;
+  status = HAL_I2C_Mem_Write(&hi2c1, I2C_ADDR_READ_MAGNETOMETER,
+                              0x61U, I2C_MEMADD_SIZE_8BIT,
+                              &value, 1, HAL_MAX_DELAY);
 
   if (status != HAL_OK)
   {
     Error_Handler();
   }
 
-  HAL_Delay(100);
+  value = 0x10;
+  status = HAL_I2C_Mem_Write(&hi2c1, I2C_ADDR_READ_MAGNETOMETER,
+                              0x62U, I2C_MEMADD_SIZE_8BIT,
+                              &value, 1, HAL_MAX_DELAY);
+
+  if (status != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  HAL_Delay(20);
 
 
   HAL_GPIO_WritePin(g_led_states[7].GPIOx, g_led_states[7].GPIO_Pin, GPIO_PIN_SET);
@@ -259,6 +264,9 @@ void mb_init(void)
   // mb_toggle_pin(LD8_GPIO_Port, LD8_Pin, value);
 }
 
+
+#ifdef SELF_TEST_MODE
+
 static uint8_t axis_values[6];
 
 void read_all_regs(void)
@@ -286,6 +294,8 @@ void self_test(void)
   uint16_t st_x_axis[50], st_y_axis[50], st_z_axis[50];
   uint32_t no_st[3] = {0, 0, 0}, st[3] = {0, 0, 0};
   uint16_t st_min[3] = {0xFFFF, 0xFFFF, 0xFFFF}, st_max[3] = {0, 0, 0};
+
+  memset(axis_values, 0, sizeof(axis_values));
 
   value = 0x8CU;
   status = HAL_I2C_Mem_Write(&hi2c1, I2C_ADDR_READ_MAGNETOMETER,
@@ -443,28 +453,46 @@ void self_test(void)
   status = HAL_I2C_Mem_Write(&hi2c1, I2C_ADDR_READ_MAGNETOMETER,
                               0x62U, I2C_MEMADD_SIZE_8BIT,
                               &value, 1, HAL_MAX_DELAY);
-
-
 }
+
+#endif /* SELF_TEST_MODE */
 
 void data_ready_interrupt(void)
 {
   HAL_StatusTypeDef status;
   static uint8_t result[sizeof(g_reading_steps) / sizeof(*g_reading_steps)] = {0};
+  static uint16_t min[3] = {0xffff, 0xffff, 0xffff};
+  static uint16_t max[3] = {0};
+  int32_t result_32[3];
+  uint8_t status_reg = 0;
   static uint16_t res_16_bit[3]; // x,y,z
   uint8_t axis_idx;
-  uint16_t x_percent,y_percent;
+  // uint16_t x_percent,y_percent;
   double angle;
 
   static uint8_t curr_poll = 0;
 
   uint8_t led_idx;
 
+  status = HAL_I2C_Mem_Read(&hi2c1, 0x3C,
+                            I2C_ADDR_STATUS_REG_M, I2C_MEMADD_SIZE_8BIT,
+                            &status_reg, 1, HAL_MAX_DELAY);
+
+  if (!(status_reg & 0b1000))
+  {
+    return;
+  }
+
   for (axis_idx = 0; axis_idx < sizeof(g_reading_steps)/sizeof(*g_reading_steps); axis_idx++)
   {
     status = HAL_I2C_Mem_Read(&hi2c1, 0x3C,
                               g_reading_steps[curr_poll], I2C_MEMADD_SIZE_8BIT,
                               result + axis_idx, 1, HAL_MAX_DELAY);
+
+    if (status != HAL_OK)
+    {
+      break;
+    }
 
     curr_poll++;
   }
@@ -479,7 +507,6 @@ void data_ready_interrupt(void)
   // g_led_states[3].duty_cycle_percent = 100;
 
 
-
   if (curr_poll == sizeof(g_reading_steps) / sizeof(*g_reading_steps))
   {
     curr_poll = 0;
@@ -488,58 +515,77 @@ void data_ready_interrupt(void)
     res_16_bit[1] = CONCAT_8BIT_INTO_16BIT(result[3], result[2]);
     res_16_bit[2] = CONCAT_8BIT_INTO_16BIT(result[5], result[4]);
 
-    x_percent = MAGN_VALUE_TO_PERSENT(res_16_bit[0]);
-    y_percent = MAGN_VALUE_TO_PERSENT(res_16_bit[1]);
+    for (axis_idx = 0; axis_idx < 3; axis_idx++)
+    {
+      min[axis_idx] = fminf(res_16_bit[axis_idx], min[axis_idx]);
+      max[axis_idx] = fmaxf(res_16_bit[axis_idx], max[axis_idx]);
+
+      result_32[axis_idx] = res_16_bit[axis_idx] - (0xffff) / 2;
+    }
+
+    // x_percent = MAGN_VALUE_TO_PERSENT(res_16_bit[0]);
+    // y_percent = MAGN_VALUE_TO_PERSENT(res_16_bit[1]);
 
     for(led_idx = 0; led_idx < LED_CNT; led_idx++)
     {
       g_led_states[led_idx].duty_cycle_percent = 0U;
     }
 
-    angle = atan2(res_16_bit[0], res_16_bit[1]) * (180 / M_PI);
+    angle = (int) (atan2(result_32[0], result_32[1]) * (180 / M_PI) + 180);
 
-    if (angle > 315 || angle >= 0 && angle < 45)
+    static float mn = 1000, mx = 0;
+
+    mn = fminf(mn, angle);
+    mx = fmaxf(mx, angle);
+
+    if (angle >= 315 || (angle >= 0 && angle < 45))
     {
       g_led_states[0].duty_cycle_percent = 100;
     }
-    else if (angle >= 45 && angle < 90)
-    {
-      g_led_states[1].duty_cycle_percent = 100;
-    }
-    else if (angle > 90 && angle <= 135)
+// 0 2 4 6 7 5 3 1
+    if (angle >= 0 && angle < 90)
     {
       g_led_states[2].duty_cycle_percent = 100;
     }
-    else if (angle > 135 && angle <= 180)
-    {
-      g_led_states[3].duty_cycle_percent = 100;
-    }
-    else if (angle > 180 && angle <= 225)
-    {
-      g_led_states[3].duty_cycle_percent = 100;
-    }
-    else if (angle > 225 && angle <= 270)
+
+    if (angle >= 45 && angle < 135)
     {
       g_led_states[4].duty_cycle_percent = 100;
     }
-    else if (angle > 270 && angle <= 315)
+
+    if (angle >= 90 && angle < 180)
+    {
+      g_led_states[6].duty_cycle_percent = 100;
+    }
+
+    if (angle >= 135 && angle < 225)
+    {
+      g_led_states[7].duty_cycle_percent = 100;
+    }
+
+    if (angle >= 180 && angle < 270)
     {
       g_led_states[5].duty_cycle_percent = 100;
     }
-    else
+
+    if (angle >= 225 && angle < 315)
     {
-      /* Hi to MISRA! */
+      g_led_states[3].duty_cycle_percent = 100;
     }
 
+    if (angle >= 270 && angle < 360)
+    {
+      g_led_states[1].duty_cycle_percent = 100;
+    }
   }
 
 };
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-  uint8_t led_idx = 0;
-  bool reset_state = true;
-  uint8_t ret;
+  // uint8_t led_idx = 0;
+  // bool reset_state = true;
+  // uint8_t ret;
 
   if (GPIO_Pin == DRDY_Pin)
   {
@@ -603,17 +649,15 @@ int main(void)
   MX_SPI1_Init();
   MX_USB_PCD_Init();
   MX_TIM16_Init();
-
-  self_test();
   /* USER CODE BEGIN 2 */
 
-  // mb_init();
+  mb_init();
 
   /* Enable interrupt for DRDY */
   // HAL_NVIC_SetPriority(EXTI2_TSC_IRQn, 0x00, 0x00);
   // HAL_NVIC_EnableIRQ(EXTI2_TSC_IRQn);
 
-  // HAL_TIM_Base_Start_IT(&htim16);
+  HAL_TIM_Base_Start_IT(&htim16);
 
 
   /* USER CODE END 2 */
@@ -796,7 +840,7 @@ static void MX_TIM16_Init(void)
 
   /* USER CODE END TIM16_Init 1 */
   htim16.Instance = TIM16;
-  htim16.Init.Prescaler = 100;
+  htim16.Init.Prescaler = 1000;
   htim16.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim16.Init.Period = 65535 - 1;
   htim16.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;

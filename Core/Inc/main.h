@@ -134,12 +134,22 @@ void Error_Handler(void);
 #define I2C_ADDR_READ_MAGNETOMETER 0x3C
 
 #define I2C_ADDR_WHOAMI            0x4F
+
+#define I2C_ADDR_STATUS_REG_M      0x67
 #define I2C_ADDR_OUTX_L_REG_M      0x68
 #define I2C_ADDR_OUTX_H_REG_M      0x69
 #define I2C_ADDR_OUTY_L_REG_M      0x6A
 #define I2C_ADDR_OUTY_H_REG_M      0x6B
 #define I2C_ADDR_OUTZ_L_REG_M      0x6C
 #define I2C_ADDR_OUTZ_H_REG_M      0x6D
+
+
+#define I2C_ADDR_OFFSET_X_REG_L_M  0x45
+#define I2C_ADDR_OFFSET_X_REG_H_M  0x46
+#define I2C_ADDR_OFFSET_Y_REG_L_M  0x47
+#define I2C_ADDR_OFFSET_Y_REG_H_M  0x48
+#define I2C_ADDR_OFFSET_Z_REG_L_M  0x49
+#define I2C_ADDR_OFFSET_Z_REG_H_M  0x4a
 
 #define I2C_ADDR_CFG_REG_A_M       0x60
 #define I2C_ADDR_CFG_REG_C_M       0x62
