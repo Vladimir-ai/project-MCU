@@ -1,0 +1,8 @@
+{
+  "files.associations": {
+    "modbus_driver.h": "c",
+    "modbus_srv.h": "c",
+    "cstring": "c",
+    "usbd_cdc_if.h": "c"
+  }
+}
