@@ -202,7 +202,7 @@ void mb_init(void)
 
   value = 0x8CU;
   status = HAL_I2C_Mem_Write(&hi2c1, I2C_ADDR_READ_MAGNETOMETER,
-                              0x60U, I2C_MEMADD_SIZE_8BIT,
+                              I2C_ADDR_CFG_REG_A_M, I2C_MEMADD_SIZE_8BIT,
                               &value, 1, HAL_MAX_DELAY);
 
   if (status != HAL_OK)
@@ -212,7 +212,7 @@ void mb_init(void)
 
   value = 0x02;
   status = HAL_I2C_Mem_Write(&hi2c1, I2C_ADDR_READ_MAGNETOMETER,
-                              0x61U, I2C_MEMADD_SIZE_8BIT,
+                              I2C_ADDR_CFG_REG_B_M, I2C_MEMADD_SIZE_8BIT,
                               &value, 1, HAL_MAX_DELAY);
 
   if (status != HAL_OK)
@@ -222,7 +222,7 @@ void mb_init(void)
 
   value = 0x10;
   status = HAL_I2C_Mem_Write(&hi2c1, I2C_ADDR_READ_MAGNETOMETER,
-                              0x62U, I2C_MEMADD_SIZE_8BIT,
+                              I2C_ADDR_CFG_REG_C_M, I2C_MEMADD_SIZE_8BIT,
                               &value, 1, HAL_MAX_DELAY);
 
   if (status != HAL_OK)
@@ -483,9 +483,10 @@ void data_ready_interrupt(void)
     return;
   }
 
+  /* Read all registers */
   for (axis_idx = 0; axis_idx < sizeof(g_reading_steps)/sizeof(*g_reading_steps); axis_idx++)
   {
-    status = HAL_I2C_Mem_Read(&hi2c1, 0x3C,
+    status = HAL_I2C_Mem_Read(&hi2c1, I2C_ADDR_READ_MAGNETOMETER,
                               g_reading_steps[curr_poll], I2C_MEMADD_SIZE_8BIT,
                               result + axis_idx, 1, HAL_MAX_DELAY);
 
@@ -507,6 +508,7 @@ void data_ready_interrupt(void)
   // g_led_states[3].duty_cycle_percent = 100;
 
 
+  /* Check that this is an error and pack registers into values. */
   if (curr_poll == sizeof(g_reading_steps) / sizeof(*g_reading_steps))
   {
     curr_poll = 0;
@@ -515,6 +517,10 @@ void data_ready_interrupt(void)
     res_16_bit[1] = CONCAT_8BIT_INTO_16BIT(result[3], result[2]);
     res_16_bit[2] = CONCAT_8BIT_INTO_16BIT(result[5], result[4]);
 
+    /* It's a legacy check for dynamic range.
+       We don't need it at all now.
+
+       Only result_32 should be used because signed value is needed. */
     for (axis_idx = 0; axis_idx < 3; axis_idx++)
     {
       min[axis_idx] = fminf(res_16_bit[axis_idx], min[axis_idx]);
@@ -531,6 +537,7 @@ void data_ready_interrupt(void)
       g_led_states[led_idx].duty_cycle_percent = 0U;
     }
 
+    /* Get result. */
     angle = (int) (atan2(result_32[0], result_32[1]) * (180 / M_PI) + 180);
 
     static float mn = 1000, mx = 0;

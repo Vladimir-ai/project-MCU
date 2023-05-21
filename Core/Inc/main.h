@@ -152,6 +152,7 @@ void Error_Handler(void);
 #define I2C_ADDR_OFFSET_Z_REG_H_M  0x4a
 
 #define I2C_ADDR_CFG_REG_A_M       0x60
+#define I2C_ADDR_CFG_REG_B_M       0x61
 #define I2C_ADDR_CFG_REG_C_M       0x62
 #define I2C_ADDR_INT_CTRL_REG_M    0x63
 
