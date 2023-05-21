@@ -389,6 +389,12 @@ void StartDefaultTask(void const * argument)
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 5 */
   modbus_srv_init();
+
+  g_registers.ready = 1;
+  g_registers.registers[0] = 0xdead;
+  g_registers.registers[1] = 0x0bee;
+  g_registers.registers[2] = 0xdead;
+
   /* Infinite loop */
   for(;;)
   {
