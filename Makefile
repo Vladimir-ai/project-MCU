@@ -81,7 +81,8 @@ Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ctlreq.c \
 Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ioreq.c \
 Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.c \
 ModbusDriver/Src/modbus_driver.c \
-Core/Src/modbus_srv.c
+Core/Src/modbus_srv.c \
+Core/Src/compass.c
 
 
 # ASM sources

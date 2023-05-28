@@ -29,6 +29,10 @@ extern "C" {
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f3xx_hal.h"
 
+
+#include "cmsis_os.h"
+#include "usb_device.h"
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -118,6 +122,62 @@ void Error_Handler(void);
 #define MEMS_INT2_GPIO_Port GPIOE
 
 /* USER CODE BEGIN Private defines */
+
+/* Accelerometer defines */
+#define I2C_ADDR_READ_ACCELEROMETER (0x32)
+
+#define LSM303DLHC_WHO_AM_I_ADDR 0x0F
+
+#define I2C_ADDR_OUT_X_L_A 0x28
+#define I2C_ADDR_OUT_X_H_A 0x29
+#define I2C_ADDR_OUT_Y_L_A 0x2A
+#define I2C_ADDR_OUT_Y_H_A 0x2B
+#define I2C_ADDR_OUT_Z_L_A 0x2C
+#define I2C_ADDR_OUT_Z_H_A 0x2D
+
+/* Magnetometer defines */
+#define I2C_ADDR_READ_MAGNETOMETER 0x3C
+
+#define I2C_ADDR_WHOAMI            0x4F
+
+#define I2C_ADDR_STATUS_REG_M      0x67
+#define I2C_ADDR_OUTX_L_REG_M      0x68
+#define I2C_ADDR_OUTX_H_REG_M      0x69
+#define I2C_ADDR_OUTY_L_REG_M      0x6A
+#define I2C_ADDR_OUTY_H_REG_M      0x6B
+#define I2C_ADDR_OUTZ_L_REG_M      0x6C
+#define I2C_ADDR_OUTZ_H_REG_M      0x6D
+
+
+#define I2C_ADDR_OFFSET_X_REG_L_M  0x45
+#define I2C_ADDR_OFFSET_X_REG_H_M  0x46
+#define I2C_ADDR_OFFSET_Y_REG_L_M  0x47
+#define I2C_ADDR_OFFSET_Y_REG_H_M  0x48
+#define I2C_ADDR_OFFSET_Z_REG_L_M  0x49
+#define I2C_ADDR_OFFSET_Z_REG_H_M  0x4a
+
+#define I2C_ADDR_CFG_REG_A_M       0x60
+#define I2C_ADDR_CFG_REG_B_M       0x61
+#define I2C_ADDR_CFG_REG_C_M       0x62
+#define I2C_ADDR_INT_CTRL_REG_M    0x63
+
+
+#define I2C_ADDR_CTRL_REG1_A       0x20
+
+#define I2C_RESULT_WHOAMI  0x40
+
+
+#define PWM_PERIODS 100
+#define LED_CNT     8
+
+
+typedef struct led_pwm_desc_s
+{
+  GPIO_TypeDef* GPIOx;
+  uint16_t GPIO_Pin;
+  GPIO_PinState PinState;
+  uint8_t duty_cycle_percent;
+} led_pwm_desc_t;
 
 /* USER CODE END Private defines */
 

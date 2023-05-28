@@ -24,6 +24,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "modbus_srv.h"
+#include "compass.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -49,6 +50,8 @@ SPI_HandleTypeDef hspi1;
 TIM_HandleTypeDef htim16;
 
 osThreadId defaultTaskHandle;
+
+TimerHandle_t xTimer;
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -374,6 +377,28 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+
+static void timer_init(void)
+{
+  xTimer = xTimerCreate("x_timer",
+                        100,
+                        pdTRUE,
+                        (void *) 0,
+                        data_ready_interrupt);
+
+  if (xTimer == NULL)
+  {
+    Error_Handler();
+  }
+  else
+  {
+    if( xTimerStart( xTimer, 0 ) != pdPASS )
+    {
+      Error_Handler();
+    }
+  }
+}
+
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
@@ -390,10 +415,7 @@ void StartDefaultTask(void const * argument)
   /* USER CODE BEGIN 5 */
   modbus_srv_init();
 
-  g_registers.ready = 1;
-  g_registers.registers[0] = 0xdead;
-  g_registers.registers[1] = 0x0bee;
-  g_registers.registers[2] = 0xdead;
+  compass_init();
 
   /* Infinite loop */
   for(;;)
