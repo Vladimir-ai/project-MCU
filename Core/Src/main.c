@@ -20,7 +20,7 @@
 #include "main.h"
 #include "cmsis_os.h"
 #include "usb_device.h"
-
+#include "timers.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "modbus_srv.h"
@@ -415,6 +415,8 @@ void StartDefaultTask(void const * argument)
   modbus_srv_init();
 
   compass_init();
+
+  timer_init();
 
   /* Infinite loop */
   for(;;)
