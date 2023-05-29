@@ -417,6 +417,7 @@ void StartDefaultTask(void const * argument)
   compass_init();
 
   timer_init();
+  g_registers.ready = 1;
 
   /* Infinite loop */
   for(;;)

@@ -174,9 +174,15 @@ void data_ready_interrupt(TimerHandle_t xTimer)
   {
     curr_poll = 0;
 
-    result_32[0] = CONVERSE_16BIT_TO_32BIT(CONCAT_8BIT_INTO_16BIT(result[1], result[0]));
-    result_32[1] = CONVERSE_16BIT_TO_32BIT(CONCAT_8BIT_INTO_16BIT(result[3], result[2]));
-    result_32[2] = CONVERSE_16BIT_TO_32BIT(CONCAT_8BIT_INTO_16BIT(result[5], result[4]));
+    g_registers.ready = 0;
+    g_registers.registers[0] = CONCAT_8BIT_INTO_16BIT(result[1], result[0]);
+    g_registers.registers[1] = CONCAT_8BIT_INTO_16BIT(result[3], result[2]);
+    g_registers.registers[2] = CONCAT_8BIT_INTO_16BIT(result[5], result[4]);
+
+    for (axis_idx = 0; axis_idx < 3; axis_idx++)
+    {
+      result_32[axis_idx] = CONVERSE_16BIT_TO_32BIT(g_registers.registers[2]);
+    }
 
     for(led_idx = 0; led_idx < LED_CNT; led_idx++)
     {
@@ -193,6 +199,8 @@ void data_ready_interrupt(TimerHandle_t xTimer)
         g_led_states[led_idx].duty_cycle_percent = 100;
       }
     }
+
+    g_registers.registers[3] = angle * 180 / M_PI;
   }
 
 }

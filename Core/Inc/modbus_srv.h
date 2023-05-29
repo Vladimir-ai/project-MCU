@@ -4,13 +4,13 @@
 #include <stdint.h>
 
 #define MIN_ADDR          0U
-#define MAX_ADDR          2U
+#define MAX_ADDR          3U
 
 #define DEV_ADDR          1U
 
 typedef struct register_table_s
 {
-  uint16_t registers[3];
+  uint16_t registers[MAX_ADDR + 1];
   uint8_t ready;
 } register_table_t;
 
