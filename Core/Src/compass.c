@@ -3,12 +3,10 @@
 
 #include <stdbool.h>
 #include <math.h>
-
+#include "modbus_srv.h"
 
 #define CONCAT_8BIT_INTO_16BIT(high_byte, low_byte)  (((high_byte) << 8U) | low_byte)
 #define CONVERSE_16BIT_TO_32BIT(value)               ((value) - (0xffff) / 2)
-#define MAX(a, b)                                    ((a) = (b) > (a) ? (a):(a))
-#define MIN(a, b)                                    ((a) = (b) < (a) ? (b):(a))
 
 #define MAGN_VALUE_TO_PERSENT(val) ((0xffff - (val)) / 10)
 
@@ -122,6 +120,7 @@ void compass_init(void)
 
   HAL_Delay(20);
 
+  g_registers.ready = 1;
 
 //   HAL_GPIO_WritePin(g_led_states[7].GPIOx, g_led_states[7].GPIO_Pin, GPIO_PIN_SET);
 }

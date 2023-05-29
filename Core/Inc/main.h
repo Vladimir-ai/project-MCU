@@ -29,13 +29,10 @@ extern "C" {
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f3xx_hal.h"
 
-
-#include "cmsis_os.h"
-#include "usb_device.h"
-
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "cmsis_os.h"
+#include "usb_device.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/

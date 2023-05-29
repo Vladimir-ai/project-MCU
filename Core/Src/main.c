@@ -50,9 +50,8 @@ SPI_HandleTypeDef hspi1;
 TIM_HandleTypeDef htim16;
 
 osThreadId defaultTaskHandle;
-
-TimerHandle_t xTimer;
 /* USER CODE BEGIN PV */
+TimerHandle_t xTimer;
 
 /* USER CODE END PV */
 
